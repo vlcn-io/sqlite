@@ -693,9 +693,11 @@ static void recoverGetPage(
     if( pStmt ){
       sqlite3_bind_int64(pStmt, 1, pgno);
       if( SQLITE_ROW==sqlite3_step(pStmt) ){
+        const u8 *aPg;
+        int nPg;
         assert( p->errCode==SQLITE_OK );
-        const u8 *aPg = sqlite3_column_blob(pStmt, 0);
-        int nPg = sqlite3_column_bytes(pStmt, 0);
+        aPg = sqlite3_column_blob(pStmt, 0);
+        nPg = sqlite3_column_bytes(pStmt, 0);
         if( pgno==1 && nPg==p->pgsz && 0==memcmp(p->pPage1Cache, aPg, nPg) ){
           aPg = p->pPage1Disk;
         }
@@ -2008,7 +2010,10 @@ static void recoverFinalCleanup(sqlite3_recover *p){
   p->pGetPage = 0;
 
   {
-    int res = sqlite3_close(p->dbOut);
+#ifdef SQLITE_DEBUG
+    int res = 
+#endif
+       sqlite3_close(p->dbOut);
     assert( res==SQLITE_OK );
   }
   p->dbOut = 0;
@@ -2528,8 +2533,8 @@ static void recoverInstallWrapper(sqlite3_recover *p){
 ** held when this function is called.
 */
 static void recoverUninstallWrapper(sqlite3_recover *p){
-  recoverAssertMutexHeld();
   sqlite3_file *pFd = 0;
+  recoverAssertMutexHeld();
   sqlite3_file_control(p->dbIn, p->zDb,SQLITE_FCNTL_FILE_POINTER,(void*)&pFd);
   if( pFd && pFd->pMethods ){
     pFd->pMethods = recover_g.pMethods;
@@ -2685,7 +2690,7 @@ sqlite3_recover *recoverInit(
     pRet->zDb = (char*)&pRet[1];
     pRet->zUri = &pRet->zDb[nDb+1];
     memcpy(pRet->zDb, zDb, nDb);
-    if( nUri>0 ) memcpy(pRet->zUri, zUri, nUri);
+    if( nUri>0 && zUri ) memcpy(pRet->zUri, zUri, nUri);
     pRet->xSql = xSql;
     pRet->pSqlCtx = pSqlCtx;
     pRet->bRecoverRowid = RECOVER_ROWID_DEFAULT;
