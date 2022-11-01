@@ -581,7 +581,7 @@ oz: clean
 ########################################################################
 # Sub-makes...
 
-include fiddle.make
+# include fiddle.make
 
 ifneq (,$(filter wasmfs,$(MAKECMDGOALS)))
 # wasmfs build disabled 2022-10-19 per /chat
