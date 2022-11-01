@@ -1,0 +1,6 @@
+Makefile
+config.log
+config.status
+libtool
+sqlite3.pc
+sqlite_cfg.h
