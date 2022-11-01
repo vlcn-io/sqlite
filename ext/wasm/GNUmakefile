@@ -120,7 +120,8 @@ crsql-files := \
 	$(dir.crsql)/changes-vtab.c \
 	$(dir.crsql)/changes-vtab-read.c \
 	$(dir.crsql)/changes-vtab-common.c \
-	$(dir.crsql)/changes-vtab-write.c
+	$(dir.crsql)/changes-vtab-write.c \
+	$(dir.crsql)/ext-data.c
 SQLITE_OPT = \
   -DSQLITE_ENABLE_FTS4 \
   -DSQLITE_ENABLE_RTREE \
@@ -187,6 +188,8 @@ $(sqlite3.c) $(sqlite3.h):
 
 $(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
 	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
+
+ext: $(sqlite3.extra.c)
 
 .PHONY: clean distclean
 clean:
@@ -436,7 +439,7 @@ emcc.jsflags += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
 
 sqlite3.js := $(dir.dout)/sqlite3.js
 sqlite3.wasm := $(dir.dout)/sqlite3.wasm
-sqlite3-wasm.c := $(dir.api)/sqlite3-wasm.c
+sqlite3-wasm.c := $(sqlite3.extra.c)
 # sqlite3-wasm.o vs sqlite3-wasm.c: building against the latter
 # (predictably) results in a slightly faster binary, but we're close
 # enough to the target speed requirements that the 500ms makes a
@@ -533,7 +536,7 @@ $(EXPORTED_FUNCTIONS.speedtest1): $(EXPORTED_FUNCTIONS.api)
 speedtest1.js := $(dir.dout)/speedtest1.js
 speedtest1.wasm := $(subst .js,.wasm,$(speedtest1.js))
 speedtest1.cflags := $(cflags.common) -DSQLITE_SPEEDTEST1_WASM
-speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c)
+speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c) $(crsql-files)
 $(eval $(call call-make-pre-js,speedtest1))
 $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
     $(pre-post-speedtest1.deps) \
