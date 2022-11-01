@@ -61,6 +61,7 @@ else
 endif
 
 dir.top := ../..
+dir.crsql := ../crsql
 # Reminder: some Emscripten flags require absolute paths but we want
 # relative paths for most stuff simply to reduce noise. The
 # $(abspath...) GNU make function can transform relative paths to
@@ -109,6 +110,7 @@ CLEAN_FILES += *~ $(dir.jacc)/*~ $(dir.api)/*~ $(dir.common)/*~
 emcc.WASM_BIGINT ?= 1
 sqlite3.c := $(dir.top)/sqlite3.c
 sqlite3.h := $(dir.top)/sqlite3.h
+sqlite3.extra.c := $(dir.crsql)/dist/sqlite3-extra.c
 SQLITE_OPT = \
   -DSQLITE_ENABLE_FTS4 \
   -DSQLITE_ENABLE_RTREE \
@@ -171,6 +173,11 @@ emcc_opt_full := $(emcc_opt) -g3
 
 $(sqlite3.c) $(sqlite3.h):
 	$(MAKE) -C $(dir.top) sqlite3.c
+
+$(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
+	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
+
+ext: $(sqlite3.extra.c)
 
 .PHONY: clean distclean
 clean:
