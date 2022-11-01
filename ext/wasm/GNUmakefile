@@ -137,6 +137,7 @@ SQLITE_OPT = \
   -DSQLITE_OMIT_SHARED_CACHE \
   -DSQLITE_OMIT_WAL \
   -DSQLITE_THREADSAFE=0 \
+	-DSQLITE_EXTRA_INIT=core_init \
   -DSQLITE_TEMP_STORE=3 \
   -DSQLITE_OS_KV_OPTIONAL=1 \
   '-DSQLITE_DEFAULT_UNIX_VFS="unix-none"' \
@@ -332,9 +333,9 @@ emcc.flags :=
 ########################################################################
 # emcc flags for .c/.o.
 emcc.cflags :=
-emcc.cflags += -std=c99 -fPIC
+emcc.cflags += -std=gnu99 -fPIC
 # -------------^^^^^^^^ we currently need c99 for WASM-specific sqlite3 APIs.
-emcc.cflags += -I. -I$(dir.top)
+emcc.cflags += -I. -I$(dir.top) -I$(dir.crsql)
 
 ########################################################################
 # emcc flags specific to building the final .js/.wasm file...
@@ -581,7 +582,7 @@ oz: clean
 ########################################################################
 # Sub-makes...
 
-# include fiddle.make
+include fiddle.make
 
 ifneq (,$(filter wasmfs,$(MAKECMDGOALS)))
 # wasmfs build disabled 2022-10-19 per /chat

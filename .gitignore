@@ -76,3 +76,8 @@ ext/wasm/version-info
 speedtest1
 speedtest1.dSYM/
 tool/stripccomments
+ext/wasm/fiddle/fiddle-module.js
+ext/wasm/fiddle/fiddle-module.js.gz
+ext/wasm/fiddle/fiddle-module.wasm
+ext/wasm/fiddle/fiddle-module.wasm.gz
+ext/wasm/fiddle/fiddle.js.gz

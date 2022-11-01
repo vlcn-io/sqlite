@@ -137,6 +137,9 @@
 #ifndef SQLITE_THREADSAFE
 # define SQLITE_THREADSAFE 0
 #endif
+#ifndef SQLITE_EXTRA_INIT
+# define SQLITE_EXTRA_INIT core_init
+#endif
 
 /**********************************************************************/
 /* SQLITE_USE_... */
