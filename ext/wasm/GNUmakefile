@@ -105,12 +105,22 @@ ifeq (,$(wildcard $(dir.tmp)))
   dir._tmp := $(shell mkdir -p $(dir.tmp))
 endif
 
-cflags.common :=  -I. -I.. -I$(dir.top)
+cflags.common :=  -I. -I.. -I$(dir.top) -I$(dir.crsql)
 CLEAN_FILES += *~ $(dir.jacc)/*~ $(dir.api)/*~ $(dir.common)/*~
 emcc.WASM_BIGINT ?= 1
 sqlite3.c := $(dir.top)/sqlite3.c
 sqlite3.h := $(dir.top)/sqlite3.h
-sqlite3.extra.c := $(dir.crsql)/dist/sqlite3-extra.c
+sqlite3.extra.c := $(dir.top)/sqlite3-extra.c
+crsql-files := \
+	$(dir.crsql)/crsqlite.c\
+	$(dir.crsql)/util.c \
+	$(dir.crsql)/tableinfo.c \
+	$(dir.crsql)/triggers.c \
+	$(dir.crsql)/normalize.c \
+	$(dir.crsql)/changes-vtab.c \
+	$(dir.crsql)/changes-vtab-read.c \
+	$(dir.crsql)/changes-vtab-common.c \
+	$(dir.crsql)/changes-vtab-write.c
 SQLITE_OPT = \
   -DSQLITE_ENABLE_FTS4 \
   -DSQLITE_ENABLE_RTREE \
@@ -176,8 +186,6 @@ $(sqlite3.c) $(sqlite3.h):
 
 $(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
 	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
-
-ext: $(sqlite3.extra.c)
 
 .PHONY: clean distclean
 clean:
@@ -441,7 +449,7 @@ $(sqlite3.js): $(MAKEFILE) $(sqlite3.wasm.obj) \
 	@echo "Building $@ ..."
 	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
     $(emcc.jsflags) $(pre-post-common.flags) $(pre-post-sqlite3.flags) \
-    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c)
+    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files)
 	chmod -x $(sqlite3.wasm)
 	$(maybe-wasm-strip) $(sqlite3.wasm)
 	@ls -la $@ $(sqlite3.wasm)

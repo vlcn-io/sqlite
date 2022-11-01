@@ -33,3 +33,4 @@ sqlite3.h
 sqlite3ext.h
 sqlite3session.h
 tsrc/
+sqlite3-extra.c

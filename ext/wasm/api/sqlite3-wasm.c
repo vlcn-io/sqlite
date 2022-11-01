@@ -145,7 +145,7 @@
 #endif
 
 #include <assert.h>
-#include "sqlite3.c" /* yes, .c instead of .h. */
+#include "sqlite3-extra.c" /* yes, .c instead of .h. */
 
 #if defined(__EMSCRIPTEN__)
 #  include <emscripten/console.h>
