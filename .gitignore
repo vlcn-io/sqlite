@@ -81,3 +81,9 @@ ext/wasm/fiddle/fiddle-module.js.gz
 ext/wasm/fiddle/fiddle-module.wasm
 ext/wasm/fiddle/fiddle-module.wasm.gz
 ext/wasm/fiddle/fiddle.js.gz
+.libs/
+libsqlite3.la
+sqlite3
+sqlite3.dSYM/
+sqlite3.lo
+sqlite3.o
