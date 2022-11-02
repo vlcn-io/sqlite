@@ -439,7 +439,7 @@ emcc.jsflags += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
 
 sqlite3.js := $(dir.dout)/sqlite3.js
 sqlite3.wasm := $(dir.dout)/sqlite3.wasm
-sqlite3-wasm.c := $(sqlite3.extra.c)
+sqlite3-wasm.c := $(dir.api)/sqlite3-wasm.c
 # sqlite3-wasm.o vs sqlite3-wasm.c: building against the latter
 # (predictably) results in a slightly faster binary, but we're close
 # enough to the target speed requirements that the 500ms makes a
