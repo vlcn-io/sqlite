@@ -190,7 +190,7 @@ $(sqlite3.c) $(sqlite3.h):
 $(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
 	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
 
-ext: $(sqlite3.extra.c)
+crsqlite-extra: $(sqlite3.extra.c)
 
 .PHONY: clean distclean
 clean:
