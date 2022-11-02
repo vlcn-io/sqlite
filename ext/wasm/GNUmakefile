@@ -156,6 +156,7 @@ emcc_opt ?= -O0
 endif
 # When passing emcc_opt from the CLI, += and re-assignment have no
 # effect, so emcc_opt+=-g3 doesn't work. So...
+# -gsource-map --source-map-base ./
 emcc_opt_full := $(emcc_opt) -g3
 # ^^^ ALWAYS use -g3. See below for why.
 #
@@ -336,7 +337,7 @@ emcc.flags :=
 ########################################################################
 # emcc flags for .c/.o.
 emcc.cflags :=
-emcc.cflags += -std=gnu99 -fPIC
+emcc.cflags += -std=c99 -fPIC
 # -------------^^^^^^^^ we currently need c99 for WASM-specific sqlite3 APIs.
 emcc.cflags += -I. -I$(dir.top) -I$(dir.crsql)
 
