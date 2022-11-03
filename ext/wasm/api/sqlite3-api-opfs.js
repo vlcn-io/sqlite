@@ -166,7 +166,7 @@ const installOpfsVfs = function callee(options){
       opfsVfs.dispose();
       return promiseReject_(err);
     };
-    const W = new Worker(options.proxyUri);
+    const W = new Worker(new URL(options.proxyUri, import.meta.url));
     W._originalOnError = W.onerror /* will be restored later */;
     W.onerror = function(err){
       // The error object doesn't contain any useful info when the

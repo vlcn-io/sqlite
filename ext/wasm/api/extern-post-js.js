@@ -4,7 +4,7 @@
    most of the associated JS code, runs outside of the
    Emscripten-generated module init scope, in the current
    global scope. */
-(function(){
+const toexport = (function(){
   /**
      In order to hide the sqlite3InitModule()'s resulting Emscripten
      module from downstream clients (and simplify our documentation by
@@ -15,7 +15,7 @@
      impls which Emscripten installs at some point in the file above
      this.
   */
-  const originalInit = self.sqlite3InitModule;
+  const originalInit = sqlite3InitModule;
   if(!originalInit){
     throw new Error("Expecting self.sqlite3InitModule to be defined by the Emscripten build.");
   }
@@ -100,4 +100,8 @@
     exports["sqlite3InitModule"] = sqlite3InitModule;
   /* AMD modules get injected in a way we cannot override,
      so we can't handle those here. */
+
+  return self.sqlite3InitModule;
 })();
+
+export default toexport;
