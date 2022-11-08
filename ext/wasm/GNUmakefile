@@ -121,7 +121,8 @@ crsql-files := \
 	$(dir.crsql)/changes-vtab-read.c \
 	$(dir.crsql)/changes-vtab-common.c \
 	$(dir.crsql)/changes-vtab-write.c \
-	$(dir.crsql)/ext-data.c
+	$(dir.crsql)/ext-data.c \
+	$(dir.crsql)/get-table.c
 SQLITE_OPT = \
   -DSQLITE_ENABLE_FTS4 \
   -DSQLITE_ENABLE_RTREE \
