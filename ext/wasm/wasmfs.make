@@ -75,7 +75,7 @@ $(sqlite3-wasmfs.js): $(sqlite3-wasm.c) \
 	@echo "Building $@ ..."
 	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
       $(sqlite3-wasmfs.cflags) $(sqlite3-wasmfs.jsflags) \
-     $(sqlite3-wasm.c)
+     $(sqlite3-wasm.c) $(crsql-files)
 	chmod -x $(sqlite3-wasmfs.wasm)
 	$(maybe-wasm-strip) $(sqlite3-wasmfs.wasm)
 	@ls -la $@ $(sqlite3-wasmfs.wasm)
