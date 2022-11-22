@@ -615,14 +615,6 @@ define SQLITE3.xJS.RECIPE
     $(emcc.jsflags) \
     $(pre-post-sqlite3.flags.$(1)) $(emcc.flags.sqlite3.$(1)) \
     $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files)
-	@if [ esm = $(1) ]; then \
-		echo "Fragile workaround for an Emscripten annoyance. See emcc.flags.sqlite3.esm."; \
-		sed -i -e '0,/^export default/{/^export default/d}' $@ || exit $$?; \
-		if ! grep -q '^export default' $@; then \
-			echo "Cannot find export default." 1>&2; \
-			exit 1; \
-		fi; \
-	fi
 	chmod -x $(sqlite3.wasm)
 	$(maybe-wasm-strip) $(sqlite3.wasm)
 	@ls -la $@ $(sqlite3.wasm)

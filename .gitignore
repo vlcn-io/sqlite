@@ -89,3 +89,9 @@ sqlite3.lo
 sqlite3.o
 .DS_Store
 ext/wasm/fiddle/fiddle-module.wasm.map
+c-pp
+sqlite-wasm-3410000.zip
+tester1-esm.html
+tester1.html
+tester1.js
+tester1.mjs
