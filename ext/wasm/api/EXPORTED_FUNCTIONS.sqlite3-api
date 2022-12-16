@@ -44,6 +44,7 @@ _sqlite3_db_status
 _sqlite3_declare_vtab
 _sqlite3_deserialize
 _sqlite3_drop_modules
+_sqlite3_enable_load_extension
 _sqlite3_errcode
 _sqlite3_errmsg
 _sqlite3_error_offset

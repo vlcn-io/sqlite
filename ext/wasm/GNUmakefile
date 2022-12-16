@@ -455,9 +455,10 @@ emcc.jsflags := -fPIC
 emcc.jsflags += --minify 0
 emcc.jsflags += --no-entry
 emcc.jsflags += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
+emcc.jsflags += -sMAIN_MODULE=2
+emcc.jsflags += --use-preload-plugins
 emcc.jsflags += -sMODULARIZE
 emcc.jsflags += -sSTRICT_JS
-emcc.jsflags += -sDYNAMIC_EXECUTION=0
 emcc.jsflags += -sNO_POLYFILL
 emcc.jsflags += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.api)
 emcc.exportedRuntimeMethods := \
@@ -607,7 +608,7 @@ define SQLITE3.xJS.RECIPE
     $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c)
 	@if [ esm = $(1) ]; then \
 		echo "Fragile workaround for an Emscripten annoyance. See emcc.flags.sqlite3.esm."; \
-		sed -i -e '0,/^export default/{/^export default/d}' $@ || exit $$?; \
+		sed -i -e '0,/^export default/{/^export default/d;}' $@ || exit $$?; \
 		if ! grep -q '^export default' $@; then \
 			echo "Cannot find export default." 1>&2; \
 			exit 1; \
@@ -684,10 +685,11 @@ speedtest1.eflags.common += -sSTACK_SIZE=512KB
 speedtest1.eflags.common += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.speedtest1)
 speedtest1.eflags.common += $(emcc.exportedRuntimeMethods)
 speedtest1.eflags.common += -sALLOW_TABLE_GROWTH
-speedtest1.eflags.common += -sDYNAMIC_EXECUTION=0
 speedtest1.eflags.common += --minify 0
 speedtest1.eflags.common += -sEXPORT_NAME=$(sqlite3.js.init-func)
 speedtest1.eflags.common += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
+speedtest1.eflags.common += -sMAIN_MODULE=2
+speedtest1.eflags.common += --use-preload-plugins
 speedtest1.exit-runtime0 := -sEXIT_RUNTIME=0
 speedtest1.exit-runtime1 := -sEXIT_RUNTIME=1
 # Re -sEXIT_RUNTIME=1 vs 0: if it's 1 and speedtest1 crashes, we get
