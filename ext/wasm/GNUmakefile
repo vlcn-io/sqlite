@@ -51,7 +51,7 @@ ifeq (,$(emcc.bin))
   $(error Cannot find emcc.)
 endif
 
-wasm-strip ?= $(shell which wasm-strip 2>/dev/null)
+# wasm-strip ?= $(shell which wasm-strip 2>/dev/null)
 ifeq (,$(filter clean,$(MAKECMDGOALS)))
 ifeq (,$(wasm-strip))
   $(info WARNING: *******************************************************************)
@@ -136,7 +136,6 @@ SQLITE_OPT = \
   -DSQLITE_ENABLE_DBSTAT_VTAB \
   -DSQLITE_ENABLE_BYTECODE_VTAB \
   -DSQLITE_ENABLE_OFFSET_SQL_FUNC \
-  -DSQLITE_OMIT_LOAD_EXTENSION \
   -DSQLITE_OMIT_DEPRECATED \
   -DSQLITE_OMIT_UTF16 \
   -DSQLITE_OMIT_SHARED_CACHE \
@@ -455,11 +454,13 @@ emcc.jsflags := -fPIC
 emcc.jsflags += --minify 0
 emcc.jsflags += --no-entry
 emcc.jsflags += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
+emcc.jsflags += -sWASM=1
 emcc.jsflags += -sMAIN_MODULE=2
 emcc.jsflags += --use-preload-plugins
 emcc.jsflags += -sMODULARIZE
 emcc.jsflags += -sSTRICT_JS
 emcc.jsflags += -sNO_POLYFILL
+emcc.jsflags += -flto
 emcc.jsflags += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.api)
 emcc.exportedRuntimeMethods := \
     -sEXPORTED_RUNTIME_METHODS=wasmMemory
@@ -602,10 +603,10 @@ $(sqlite3.mjs): $(pre-post-sqlite3.deps.esm)
 ########################################################################
 define SQLITE3.xJS.RECIPE
 	@echo "Building $@ ..."
-	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
+	$(emcc.bin) $(emcc_opt_full) $(emcc.flags) \
     $(emcc.jsflags) \
     $(pre-post-sqlite3.flags.$(1)) $(emcc.flags.sqlite3.$(1)) \
-    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c)
+    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) -o $@
 	@if [ esm = $(1) ]; then \
 		echo "Fragile workaround for an Emscripten annoyance. See emcc.flags.sqlite3.esm."; \
 		sed -i -e '0,/^export default/{/^export default/d;}' $@ || exit $$?; \
@@ -634,9 +635,9 @@ $(sqlite3.mjs):
 $(sqlite3.wasm): $(sqlite3.js)
 $(sqlite3.mjs): $(sqlite3.js)
 CLEAN_FILES += $(sqlite3.js) $(sqlite3.mjs) $(sqlite3.wasm)
-all: $(sqlite3.js) $(sqlite3.mjs)
-quick: $(sqlite3.js)
-quick: $(sqlite3.mjs) # for the sake of the snapshot build
+all: $(sqlite3.mjs) $(sqlite3.js)
+quick: $(sqlite3.mjs)
+quick: $(sqlite3.js) # for the sake of the snapshot build
 # End main $(sqlite3.js) build
 ########################################################################
 
@@ -689,6 +690,7 @@ speedtest1.eflags.common += --minify 0
 speedtest1.eflags.common += -sEXPORT_NAME=$(sqlite3.js.init-func)
 speedtest1.eflags.common += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
 speedtest1.eflags.common += -sMAIN_MODULE=2
+speedtest1.eflags.common += -sWASM=1
 speedtest1.eflags.common += --use-preload-plugins
 speedtest1.exit-runtime0 := -sEXIT_RUNTIME=0
 speedtest1.exit-runtime1 := -sEXIT_RUNTIME=1
@@ -731,7 +733,7 @@ $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
 	ls -la $@ $(speedtest1.wasm)
 
 speedtest1: $(speedtest1.js)
-all: speedtest1
+# all: speedtest1
 CLEAN_FILES += $(speedtest1.js) $(speedtest1.wasm)
 # end speedtest1.js
 ########################################################################
@@ -793,7 +795,7 @@ qoz: clean
 # Sub-makes...
 
 # sqlite.org/fiddle application...
-include fiddle.make
+# include fiddle.make
 
 # Only add wasmfs if wasmfs.enable=1 or we're running (dist)clean
 ifneq (,$(filter wasmfs,$(MAKECMDGOALS)))
