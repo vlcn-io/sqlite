@@ -15,9 +15,17 @@
 #      by the target name. Rebuild is necessary for all components to get
 #      the desired optimization level.
 #
+#  quick, q = do just a minimal build (sqlite3.js/wasm, tester1) for
+#      faster development-mode turnaround.
+#
+#  qo2, qoz = a combination of quick+o2/oz.
+#
 #  dist = create end user deliverables. Add dist.build=oX to build
 #      with a specific optimization level, where oX is one of the
-#      above-listed o? target names.
+#      above-listed o? or qo? target names.
+#
+#  snapshot = like dist, but uses a zip file name which clearly
+#      marks it as a prerelease/snapshot build.
 #
 #  clean = clean up
 #
@@ -299,8 +307,8 @@ sqlite3-license-version-header.js := $(dir.api)/sqlite3-license-version-header.j
 # sqlite3-api-build-version.js = generated JS file which populates the
 # sqlite3.version object using $(bin.version-info).
 sqlite3-api-build-version.js := $(dir.tmp)/sqlite3-api-build-version.js
-# sqlite3-api.jses = the list of JS files which make up $(sqlite3-api.js), in
-# the order they need to be assembled.
+# sqlite3-api.jses = the list of JS files which make up
+# $(sqlite3-api.js.in), in the order they need to be assembled.
 sqlite3-api.jses := $(sqlite3-license-version.js)
 sqlite3-api.jses += $(dir.api)/sqlite3-api-prologue.js
 sqlite3-api.jses += $(dir.common)/whwasmutil.js
@@ -309,7 +317,8 @@ sqlite3-api.jses += $(dir.api)/sqlite3-api-glue.js
 sqlite3-api.jses += $(sqlite3-api-build-version.js)
 sqlite3-api.jses += $(dir.api)/sqlite3-api-oo1.js
 sqlite3-api.jses += $(dir.api)/sqlite3-api-worker1.js
-sqlite3-api.jses += $(dir.api)/sqlite3-api-opfs.js
+sqlite3-api.jses += $(dir.api)/sqlite3-v-helper.js
+sqlite3-api.jses += $(dir.api)/sqlite3-vfs-opfs.c-pp.js
 sqlite3-api.jses += $(dir.api)/sqlite3-api-cleanup.js
 
 # "External" API files which are part of our distribution
@@ -326,7 +335,8 @@ $$(dir.dout)/$$(notdir $(1)): $(1) $$(MAKEFILE)
 endef
 $(foreach X,$(SOAP.js) $(sqlite3-worker1.js) $(sqlite3-worker1-promiser.js),\
   $(eval $(call COPY_XAPI,$(X))))
-all: $(sqlite3-api.ext.jses)
+all quick: $(sqlite3-api.ext.jses)
+q: quick
 
 # sqlite3-api.js.in = the generated sqlite3-api.js before it gets
 # preprocessed. It contains all of $(sqlite3-api.jses) but none of the
@@ -365,12 +375,12 @@ $(sqlite3-license-version.js): $(sqlite3.h) $(sqlite3-license-version-header.js)
 # --post-js and --pre-js are emcc flags we use to append/prepend JS to
 # the generated emscripten module file. The following rules generate
 # various versions of those files for the vanilla and ESM builds.
-pre-js.js.in := $(dir.api)/pre-js.js
+pre-js.js.in := $(dir.api)/pre-js.c-pp.js
 pre-js.js.esm := $(dir.tmp)/pre-js.esm.js
 pre-js.js.vanilla := $(dir.tmp)/pre-js.vanilla.js
 $(eval $(call C-PP.FILTER,$(pre-js.js.in),$(pre-js.js.vanilla),$(c-pp.D.vanilla)))
 $(eval $(call C-PP.FILTER,$(pre-js.js.in),$(pre-js.js.esm),$(c-pp.D.esm)))
-post-js.js.in := $(dir.tmp)/post-js.js
+post-js.js.in := $(dir.tmp)/post-js.c-pp.js
 post-js.js.vanilla := $(dir.tmp)/post-js.vanilla.js
 post-js.js.esm := $(dir.tmp)/post-js.esm.js
 post-jses.js := \
@@ -390,7 +400,7 @@ $(eval $(call C-PP.FILTER,$(post-js.js.in),$(post-js.js.esm),$(c-pp.D.esm)))
 # extern-post-js* and extern-pre-js* are files for use with
 # Emscripten's --extern-pre-js and --extern-post-js flags.  These
 # rules make different copies for the vanilla and ESM builds.
-extern-post-js.js.in := $(dir.api)/extern-post-js.js
+extern-post-js.js.in := $(dir.api)/extern-post-js.c-pp.js
 extern-post-js.js.vanilla := $(dir.tmp)/extern-post-js.vanilla.js
 extern-post-js.js.esm := $(dir.tmp)/extern-post-js.esm.js
 $(eval $(call C-PP.FILTER,$(extern-post-js.js.in),$(extern-post-js.js.vanilla),$(c-pp.D.vanilla)))
@@ -471,10 +481,7 @@ emcc.jsflags += -sDYNAMIC_EXECUTION=0
 emcc.jsflags += -sNO_POLYFILL
 emcc.jsflags += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.api)
 emcc.exportedRuntimeMethods := \
-    -sEXPORTED_RUNTIME_METHODS=FS,wasmMemory
-    # FS ==> stdio/POSIX I/O proxies. Currently used explicitly only
-    # by the fiddle app, and it must never be exposed to client code
-    # via our APIs.
+    -sEXPORTED_RUNTIME_METHODS=wasmMemory
     # wasmMemory ==> required by our code for use with -sIMPORTED_MEMORY
 emcc.jsflags += $(emcc.exportedRuntimeMethods)
 emcc.jsflags += -sUSE_CLOSURE_COMPILER=0
@@ -507,7 +514,10 @@ emcc.jsflags += -sINITIAL_MEMORY=$(emcc.INITIAL_MEMORY.$(emcc.INITIAL_MEMORY))
 ########################################################################
 
 emcc.jsflags += $(emcc.environment)
-#emcc.jsflags += -sTOTAL_STACK=4194304
+emcc.jsflags += -sSTACK_SIZE=512KB
+# ^^^ ACHTUNG: emsdk 3.1.27 reduced the default stack size from 5MB to
+# a mere 64KB, which leads to silent memory corruption via the kvvfs
+# VFS, which requires twice that for its xRead() and xWrite() methods.
 ########################################################################
 # $(sqlite3.js.init-func) is the name Emscripten assigns our exported
 # module init/load function. This symbol name is hard-coded in
@@ -588,7 +598,7 @@ sqlite3-wasm.c := $(dir.api)/sqlite3-wasm.c
 # instead of building a shared copy of sqlite3-wasm.o.
 $(eval $(call call-make-pre-js,sqlite3,vanilla))
 $(eval $(call call-make-pre-js,sqlite3,esm))
-$(sqlite3.js) $(sqlite3.mjs): $(MAKEFILE) $(sqlite3.wasm.obj) \
+$(sqlite3.js) $(sqlite3.mjs): $(MAKEFILE) $(sqlite3-wasm.c) \
     $(EXPORTED_FUNCTIONS.api)
 $(sqlite3.js):  $(pre-post-sqlite3.deps.vanilla)
 $(sqlite3.mjs): $(pre-post-sqlite3.deps.esm)
@@ -609,12 +619,26 @@ $(sqlite3.mjs): $(pre-post-sqlite3.deps.esm)
 # Upstream RFE:
 # https://github.com/emscripten-core/emscripten/issues/18237
 ########################################################################
+# SQLITE3.xJS.EXPORT-DEFAULT is part of SQLITE3[-WASMFS].xJS.RECIPE,
+# factored into a separate piece to avoid code duplication. $1 is
+# the build mode: one of (vanilla, esm).
+define SQLITE3.xJS.ESM-EXPORT-DEFAULT
+if [ esm = $(1) ]; then \
+		echo "Fragile workaround for an Emscripten annoyance. See SQLITE3.xJS.RECIPE."; \
+		sed -i -e '0,/^export default/{/^export default/d;}' $@ || exit $$?; \
+		if ! grep -q '^export default' $@; then \
+			echo "Cannot find export default." 1>&2; \
+			exit 1; \
+		fi; \
+fi
+endef
 define SQLITE3.xJS.RECIPE
 	@echo "Building $@ ..."
 	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
     $(emcc.jsflags) \
     $(pre-post-sqlite3.flags.$(1)) $(emcc.flags.sqlite3.$(1)) \
     $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files)
+	@$(call SQLITE3.xJS.ESM-EXPORT-DEFAULT,$(1))
 	chmod -x $(sqlite3.wasm)
 	$(maybe-wasm-strip) $(sqlite3.wasm)
 	@ls -la $@ $(sqlite3.wasm)
@@ -635,8 +659,9 @@ $(sqlite3.mjs):
 $(sqlite3.wasm): $(sqlite3.js)
 $(sqlite3.mjs): $(sqlite3.js)
 CLEAN_FILES += $(sqlite3.js) $(sqlite3.mjs) $(sqlite3.wasm)
-all: $(sqlite3.mjs)
-wasm: $(sqlite3.mjs)
+all: $(sqlite3.js) $(sqlite3.mjs)
+quick: $(sqlite3.js)
+quick: $(sqlite3.mjs) # for the sake of the snapshot build
 # End main $(sqlite3.js) build
 ########################################################################
 
@@ -666,28 +691,29 @@ all: batch
 ########################################################################
 # Wasmified speedtest1 is our primary benchmarking tool.
 #
-# speedtest1.eflags.common = emcc flags used by multiple builds of speedtest1
-# speedtest1.eflags = emcc flags used by main build of speedtest1
-speedtest1.eflags.common := $(emcc_opt_full)
-speedtest1.eflags :=
-speedtest1.eflags += -sENVIRONMENT=web
-speedtest1.eflags += -sALLOW_MEMORY_GROWTH
-speedtest1.eflags += -sINITIAL_MEMORY=$(emcc.INITIAL_MEMORY.$(emcc.INITIAL_MEMORY))
-speedtest1.eflags.common += -sINVOKE_RUN=0
-speedtest1.eflags.common += --no-entry
-#speedtest1.eflags.common += -flto
-speedtest1.eflags.common += -sABORTING_MALLOC
-speedtest1.eflags.common += -sSTRICT_JS
-speedtest1.eflags.common += -sMODULARIZE
-speedtest1.eflags.common += -Wno-limited-postlink-optimizations
+# emcc.speedtest1.common = emcc flags used by multiple builds of speedtest1
+# emcc.speedtest1 = emcc flags used by main build of speedtest1
+emcc.speedtest1.common := $(emcc_opt_full)
+emcc.speedtest1 :=
+emcc.speedtest1 += -sENVIRONMENT=web
+emcc.speedtest1 += -sALLOW_MEMORY_GROWTH
+emcc.speedtest1 += -sINITIAL_MEMORY=$(emcc.INITIAL_MEMORY.$(emcc.INITIAL_MEMORY))
+emcc.speedtest1.common += -sINVOKE_RUN=0
+emcc.speedtest1.common += --no-entry
+#emcc.speedtest1.common += -flto
+emcc.speedtest1.common += -sABORTING_MALLOC
+emcc.speedtest1.common += -sSTRICT_JS
+emcc.speedtest1.common += -sMODULARIZE
+emcc.speedtest1.common += -Wno-limited-postlink-optimizations
 EXPORTED_FUNCTIONS.speedtest1 := $(abspath $(dir.tmp)/EXPORTED_FUNCTIONS.speedtest1)
-speedtest1.eflags.common += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.speedtest1)
-speedtest1.eflags.common += $(emcc.exportedRuntimeMethods)
-speedtest1.eflags.common += -sALLOW_TABLE_GROWTH
-speedtest1.eflags.common += -sDYNAMIC_EXECUTION=0
-speedtest1.eflags.common += --minify 0
-speedtest1.eflags.common += -sEXPORT_NAME=$(sqlite3.js.init-func)
-speedtest1.eflags.common += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
+emcc.speedtest1.common += -sSTACK_SIZE=512KB
+emcc.speedtest1.common += -sEXPORTED_FUNCTIONS=@$(EXPORTED_FUNCTIONS.speedtest1)
+emcc.speedtest1.common += $(emcc.exportedRuntimeMethods)
+emcc.speedtest1.common += -sALLOW_TABLE_GROWTH
+emcc.speedtest1.common += -sDYNAMIC_EXECUTION=0
+emcc.speedtest1.common += --minify 0
+emcc.speedtest1.common += -sEXPORT_NAME=$(sqlite3.js.init-func)
+emcc.speedtest1.common += -sWASM_BIGINT=$(emcc.WASM_BIGINT)
 speedtest1.exit-runtime0 := -sEXIT_RUNTIME=0
 speedtest1.exit-runtime1 := -sEXIT_RUNTIME=1
 # Re -sEXIT_RUNTIME=1 vs 0: if it's 1 and speedtest1 crashes, we get
@@ -712,7 +738,7 @@ $(EXPORTED_FUNCTIONS.speedtest1): $(EXPORTED_FUNCTIONS.api)
 	@{ echo _wasm_main; cat $(EXPORTED_FUNCTIONS.api); } > $@
 speedtest1.js := $(dir.dout)/speedtest1.js
 speedtest1.wasm := $(dir.dout)/speedtest1.wasm
-speedtest1.cflags := $(cflags.common) -DSQLITE_SPEEDTEST1_WASM
+cflags.speedtest1 := $(cflags.common) -DSQLITE_SPEEDTEST1_WASM
 speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c) $(crsql-files)
 $(eval $(call call-make-pre-js,speedtest1,vanilla))
 $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
@@ -720,8 +746,8 @@ $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
     $(EXPORTED_FUNCTIONS.speedtest1)
 	@echo "Building $@ ..."
 	$(emcc.bin) \
-        $(speedtest1.eflags) $(speedtest1.eflags.common) \
-        $(speedtest1.cflags) $(pre-post-speedtest1.flags.vanilla) \
+        $(emcc.speedtest1) $(emcc.speedtest1.common) \
+        $(cflags.speedtest1) $(pre-post-speedtest1.flags.vanilla) \
         $(SQLITE_OPT) \
         $(speedtest1.exit-runtime0) \
         -o $@ $(speedtest1.cses) -lm
@@ -755,7 +781,7 @@ $(eval $(call C-PP.FILTER,tester1.c-pp.js,tester1.mjs,$(c-pp.D.esm)))
 $(eval $(call C-PP.FILTER,tester1.c-pp.html,tester1.html))
 $(eval $(call C-PP.FILTER,tester1.c-pp.html,tester1-esm.html,$(c-pp.D.esm)))
 tester1: tester1.js tester1.mjs tester1.html tester1-esm.html
-all: tester1
+all quick: tester1
 
 ########################################################################
 # Convenience rules to rebuild with various -Ox levels. Much
@@ -764,7 +790,8 @@ all: tester1
 # painful.
 
 .PHONY: o0 o1 o2 o3 os oz
-o-xtra := -flto
+o-xtra :=
+#o-xtra ?= -flto
 # ^^^^ -flto can have a considerably performance boost at -O0 but
 # doubles the build time and seems to have negligible, if any, effect
 # on higher optimization levels.
@@ -773,14 +800,18 @@ o0: clean
 o1: clean
 	$(MAKE) -e "emcc_opt=-O1 $(o-xtra)"
 o2: clean
-	$(MAKE) -e "emcc_opt=-O2 $(o-xtra)"
+	$(MAKE) -j2 -e "emcc_opt=-O2 $(o-xtra)"
+qo2: clean
+	$(MAKE) -j2 -e "emcc_opt=-O2 $(o-xtra)" quick
 o3: clean
 	$(MAKE) -e "emcc_opt=-O3 $(o-xtra)"
 os: clean
 	@echo "WARNING: -Os can result in a build with mysteriously missing pieces!"
 	$(MAKE) -e "emcc_opt=-Os $(o-xtra)"
 oz: clean
-	$(MAKE) -e "emcc_opt=-Oz $(o-xtra)"
+	$(MAKE) -j2 -e "emcc_opt=-Oz $(o-xtra)"
+qoz: clean
+	$(MAKE) -j2 -e "emcc_opt=-Oz $(o-xtra)" quick
 
 ########################################################################
 # Sub-makes...
@@ -819,15 +850,10 @@ endif
 ########################################################################
 
 ########################################################################
-# Create main client downloadable zip file:
-ifneq (,$(filter dist snapshot,$(MAKECMDGOALS)))
-include dist.make
-endif
-
-########################################################################
 # Push files to public wasm-testing.sqlite.org server
-wasm-testing.include = *.js *.html batch-runner.list \
+wasm-testing.include = *.js *.mjs *.html \
   ./tests \
+  batch-runner.list \
   $(dir.dout) $(dir.sql) $(dir.common) $(dir.fiddle) $(dir.jacc)
 wasm-testing.exclude = sql/speedtest1.sql
 wasm-testing.dir     = /jail/sites/wasm-testing
@@ -845,23 +871,35 @@ push-testing:
 ########################################################################
 # If we find a copy of the sqlite.org/wasm docs checked out, copy
 # certain files over to it, noting that some need automatable edits...
-WDOCS.home ?= ../../../wdoc
+wasm.docs.home ?= ../../../wasm
+wasm.docs.found = $(if $(wildcard $(wasm.docs.home)/api-index.md),\
+  $(wildcard $(wasm.docs.home)),)
 .PHONY: update-docs
-ifneq (,$(wildcard $(WDOCS.home)/api-index.md))
-WDOCS.jswasm := $(WDOCS.home)/jswasm
-update-docs: $(bin.stripccomments) $(sqlite3.js) $(sqlite3.wasm)
-	@echo "Copying files to the /wasm docs. Be sure to use an -Oz build for this!"
-	cp $(sqlite3.wasm) $(WDOCS.jswasm)/.
-	$(bin.stripccomments) -k -k < $(sqlite3.js) \
-		| sed -e '/^[ \t]*$$/d' > $(WDOCS.jswasm)/sqlite3.js
-	cp demo-123.js demo-123.html demo-123-worker.html $(WDOCS.home)
-	sed -n -e '/EXTRACT_BEGIN/,/EXTRACT_END/p' \
-		module-symbols.html > $(WDOCS.home)/module-symbols.html
-else
+ifeq (,$(wasm.docs.found))
 update-docs:
 	@echo "Cannot find wasm docs checkout."; \
-	echo "Pass WDOCS.home=/path/to/wasm/docs/checkout or edit this makefile to suit."; \
+	echo "Pass wasm.docs.home=/path/to/wasm/docs/checkout or edit this makefile to suit."; \
 	exit 127
+else
+wasm.docs.jswasm := $(wasm.docs.home)/jswasm
+update-docs: $(bin.stripccomments) $(sqlite3.js) $(sqlite3.wasm)
+	@echo "Copying files to the /wasm docs. Be sure to use an -Oz build for this!"
+	cp $(sqlite3.wasm) $(wasm.docs.jswasm)/.
+	$(bin.stripccomments) -k -k < $(sqlite3.js) \
+		| sed -e '/^[ \t]*$$/d' > $(wasm.docs.jswasm)/sqlite3.js
+	cp demo-123.js demo-123.html demo-123-worker.html $(wasm.docs.home)
+	sed -n -e '/EXTRACT_BEGIN/,/EXTRACT_END/p' \
+		module-symbols.html > $(wasm.docs.home)/module-symbols.html
 endif
 # end /wasm docs
 ########################################################################
+
+########################################################################
+# Create main client downloadable zip file:
+ifneq (,$(filter dist snapshot,$(MAKECMDGOALS)))
+include dist.make
+endif
+
+# Run local web server for the test/demo pages.
+httpd:
+	althttpd -max-age 1 -enable-sab -page index.html
