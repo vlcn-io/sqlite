@@ -307,6 +307,7 @@ void sqlite3NestedParse(Parse *pParse, const char *zFormat, ...){
   char saveBuf[PARSE_TAIL_SZ];
 
   if( pParse->nErr ) return;
+  if( pParse->eParseMode ) return;
   assert( pParse->nested<10 );  /* Nesting should only be of limited depth */
   va_start(ap, zFormat);
   zSql = sqlite3VMPrintf(db, zFormat, ap);
@@ -2004,6 +2005,13 @@ void sqlite3AddGenerated(Parse *pParse, Expr *pExpr, Token *pType){
   if( pCol->colFlags & COLFLAG_PRIMKEY ){
     makeColumnPartOfPrimaryKey(pParse, pCol); /* For the error message */
   }
+  if( ALWAYS(pExpr) && pExpr->op==TK_ID ){
+    /* The value of a generated column needs to be a real expression, not
+    ** just a reference to another column, in order for covering index
+    ** optimizations to work correctly.  So if the value is not an expression,
+    ** turn it into one by adding a unary "+" operator. */
+    pExpr = sqlite3PExpr(pParse, TK_UPLUS, pExpr, 0);
+  }
   sqlite3ColumnSetExpr(pParse, pTab, pCol, pExpr);
   pExpr = 0;
   goto generated_done;
@@ -2577,6 +2585,7 @@ int sqlite3ShadowTableName(sqlite3 *db, const char *zName){
 ** not pass them into code generator routines by mistake.
 */
 static int markImmutableExprStep(Walker *pWalker, Expr *pExpr){
+  (void)pWalker;
   ExprSetVVAProperty(pExpr, EP_Immutable);
   return WRC_Continue;
 }

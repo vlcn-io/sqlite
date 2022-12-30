@@ -99,11 +99,20 @@
 #ifndef SQLITE_ENABLE_FTS4
 #  define SQLITE_ENABLE_FTS4 1
 #endif
+#ifndef SQLITE_ENABLE_MATH_FUNCTIONS
+#  define SQLITE_ENABLE_MATH_FUNCTIONS 1
+#endif
 #ifndef SQLITE_ENABLE_OFFSET_SQL_FUNC
 #  define SQLITE_ENABLE_OFFSET_SQL_FUNC 1
 #endif
+#ifndef SQLITE_ENABLE_PREUPDATE_HOOK
+#  define SQLITE_ENABLE_PREUPDATE_HOOK 1 /*required by session extension*/
+#endif
 #ifndef SQLITE_ENABLE_RTREE
 #  define SQLITE_ENABLE_RTREE 1
+#endif
+#ifndef SQLITE_ENABLE_SESSION
+#  define SQLITE_ENABLE_SESSION 1
 #endif
 #ifndef SQLITE_ENABLE_STMTVTAB
 #  define SQLITE_ENABLE_STMTVTAB 1
@@ -323,11 +332,13 @@ SQLITE_WASM_KEEP int sqlite3_wasm_pstack_quota(void){
 */
 SQLITE_WASM_KEEP
 int sqlite3_wasm_db_error(sqlite3*db, int err_code, const char *zMsg){
-  if( 0!=zMsg ){
-    const int nMsg = sqlite3Strlen30(zMsg);
-    sqlite3ErrorWithMsg(db, err_code, "%.*s", nMsg, zMsg);
-  }else{
-    sqlite3ErrorWithMsg(db, err_code, NULL);
+  if( db!=0 ){
+    if( 0!=zMsg ){
+      const int nMsg = sqlite3Strlen30(zMsg);
+      sqlite3ErrorWithMsg(db, err_code, "%.*s", nMsg, zMsg);
+    }else{
+      sqlite3ErrorWithMsg(db, err_code, NULL);
+    }
   }
   return err_code;
 }
@@ -456,6 +467,22 @@ const char * sqlite3_wasm_enum_json(void){
     /* SQLITE_STATIC/TRANSIENT need to be handled explicitly as
     ** integers to avoid casting-related warnings. */
     out("\"SQLITE_STATIC\":0, \"SQLITE_TRANSIENT\":-1");
+  } _DefGroup;
+
+  DefGroup(changeset){
+    DefInt(SQLITE_CHANGESETSTART_INVERT);
+    DefInt(SQLITE_CHANGESETAPPLY_NOSAVEPOINT);
+    DefInt(SQLITE_CHANGESETAPPLY_INVERT);
+
+    DefInt(SQLITE_CHANGESET_DATA);
+    DefInt(SQLITE_CHANGESET_NOTFOUND);
+    DefInt(SQLITE_CHANGESET_CONFLICT);
+    DefInt(SQLITE_CHANGESET_CONSTRAINT);
+    DefInt(SQLITE_CHANGESET_FOREIGN_KEY);
+
+    DefInt(SQLITE_CHANGESET_OMIT);
+    DefInt(SQLITE_CHANGESET_REPLACE);
+    DefInt(SQLITE_CHANGESET_ABORT);
   } _DefGroup;
 
   DefGroup(config){
@@ -792,6 +819,11 @@ const char * sqlite3_wasm_enum_json(void){
     DefInt(SQLITE_DESERIALIZE_FREEONCLOSE);
     DefInt(SQLITE_DESERIALIZE_READONLY);
     DefInt(SQLITE_DESERIALIZE_RESIZEABLE);
+  } _DefGroup;
+
+  DefGroup(session){
+    DefInt(SQLITE_SESSION_CONFIG_STRMSIZE);
+    DefInt(SQLITE_SESSION_OBJCONFIG_SIZE);
   } _DefGroup;
 
   DefGroup(sqlite3Status){
@@ -1619,6 +1651,11 @@ int sqlite3_wasm_init_wasmfs(const char *zUnused){
 SQLITE_WASM_KEEP
 int sqlite3_wasm_test_intptr(int * p){
   return *p = *p * 2;
+}
+
+SQLITE_WASM_KEEP
+void * sqlite3_wasm_test_voidptr(void * p){
+  return p;
 }
 
 SQLITE_WASM_KEEP
