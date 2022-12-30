@@ -136,7 +136,8 @@ crsql-files := \
 	$(dir.crsql)/changes-vtab-common.c \
 	$(dir.crsql)/changes-vtab-write.c \
 	$(dir.crsql)/ext-data.c \
-	$(dir.crsql)/get-table.c
+	$(dir.crsql)/get-table.c \
+	$(dir.crsql)/seen-peers.c
 # Most SQLITE_OPT flags are set in sqlite3-wasm.c but we need them
 # made explicit here for building speedtest1.c.
 SQLITE_OPT = \
