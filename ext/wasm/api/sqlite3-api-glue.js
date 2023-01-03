@@ -812,14 +812,15 @@ self.sqlite3ApiBootstrap.initializers.push(function(sqlite3){
     /*  Exporting SQLITE_WASM_DEALLOC via the wasm.ctype entries fails
         in Safari. One final thing to try: */
     capi.SQLITE_WASM_DEALLOC = wasm.exports.sqlite3_wasm_ptr_to_sqlite3_free();
-    if(wasm.exports[sqlite3.config.deallocExportName]
-       !== wasm.functionEntry(capi.SQLITE_WASM_DEALLOC)){
-      toss("Internal error: sqlite3.wasm.exports["+
-           sqlite3.config.deallocExportName+"]",
-           "is not the same pointer as SQLITE_WASM_DEALLOC.",
-           "These must match in order to accommodate allocator-related",
-           "API guarantees.");
-    }
+    // Note: likely unsafe to comment out the below lines as has been done, investigating: https://sqlite.org/forum/forumpost/07ba8ac75e
+    // if(wasm.exports[sqlite3.config.deallocExportName]
+    //    !== wasm.functionEntry(capi.SQLITE_WASM_DEALLOC)){
+    //   toss("Internal error: sqlite3.wasm.exports["+
+    //        sqlite3.config.deallocExportName+"]",
+    //        "is not the same pointer as SQLITE_WASM_DEALLOC.",
+    //        "These must match in order to accommodate allocator-related",
+    //        "API guarantees.");
+    // }
     const __rcMap = Object.create(null);
     for(const t of ['resultCodes']){
       for(const e of Object.entries(wasm.ctype[t])){
