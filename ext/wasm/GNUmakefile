@@ -301,13 +301,13 @@ RS_WASM_TGT_DIR = $(RS_LIB_DIR)/target/$(RS_WASM_TGT)
 RS_RELEASE_BC = $(RS_WASM_TGT_DIR)/release/deps/$(RS_LIB).bc
 RS_DEBUG_BC = $(RS_WASM_TGT_DIR)/debug/deps/$(RS_LIB).bc
 
-$(RS_RELEASE_BC): FORCE
+rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
+
+$(rs-bc-files):
 	cd $(RS_LIB_DIR); \
 	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
 
-rust-lib: $(RS_RELEASE_BC)
-
-rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
+rust-lib: $(rs-bc-files)
 
 # EXPORTED_FUNCTIONS.* = files for use with Emscripten's
 # -sEXPORTED_FUNCTION flag.

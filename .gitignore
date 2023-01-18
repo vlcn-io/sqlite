@@ -95,3 +95,6 @@ tester1-esm.html
 tester1.html
 tester1.js
 tester1.mjs
+confdefs.h
+conftest.c
+conftest.err
