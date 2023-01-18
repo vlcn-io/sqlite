@@ -150,7 +150,6 @@ SQLITE_OPT = \
   -DSQLITE_ENABLE_DBSTAT_VTAB \
   -DSQLITE_ENABLE_BYTECODE_VTAB \
   -DSQLITE_ENABLE_OFFSET_SQL_FUNC \
-  -DSQLITE_OMIT_LOAD_EXTENSION \
   -DSQLITE_OMIT_DEPRECATED \
   -DSQLITE_OMIT_UTF16 \
   -DSQLITE_OMIT_SHARED_CACHE \
@@ -294,6 +293,21 @@ $(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
 	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
 
 crsqlite-extra: $(sqlite3.extra.c)
+
+RS_LIB = crsql_automigrate_web
+RS_LIB_DIR = ../../../../rs/automigrate-web
+RS_WASM_TGT = wasm32-unknown-emscripten
+RS_WASM_TGT_DIR = $(RS_LIB_DIR)/target/$(RS_WASM_TGT)
+RS_RELEASE_BC = $(RS_WASM_TGT_DIR)/release/deps/$(RS_LIB).bc
+RS_DEBUG_BC = $(RS_WASM_TGT_DIR)/debug/deps/$(RS_LIB).bc
+
+$(RS_RELEASE_BC): FORCE
+	cd $(RS_LIB_DIR); \
+	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
+
+rust-lib: $(RS_RELEASE_BC)
+
+rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
 
 # EXPORTED_FUNCTIONS.* = files for use with Emscripten's
 # -sEXPORTED_FUNCTION flag.
@@ -641,7 +655,7 @@ define SQLITE3.xJS.RECIPE
 	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
     $(emcc.jsflags) \
     $(pre-post-sqlite3.flags.$(1)) $(emcc.flags.sqlite3.$(1)) \
-    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files)
+    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files) $(rs-bc-files)
 	@$(call SQLITE3.xJS.ESM-EXPORT-DEFAULT,$(1))
 	chmod -x $(sqlite3.wasm)
 	$(maybe-wasm-strip) $(sqlite3.wasm)
@@ -743,7 +757,7 @@ $(EXPORTED_FUNCTIONS.speedtest1): $(EXPORTED_FUNCTIONS.api)
 speedtest1.js := $(dir.dout)/speedtest1.js
 speedtest1.wasm := $(dir.dout)/speedtest1.wasm
 cflags.speedtest1 := $(cflags.common) -DSQLITE_SPEEDTEST1_WASM
-speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c) $(crsql-files)
+speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c) $(crsql-files) $(rs-bc-files)
 $(eval $(call call-make-pre-js,speedtest1,vanilla))
 $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
     $(pre-post-speedtest1.deps.vanilla) \
@@ -907,3 +921,5 @@ endif
 # Run local web server for the test/demo pages.
 httpd:
 	althttpd -max-age 1 -enable-sab -page index.html
+
+FORCE: ;

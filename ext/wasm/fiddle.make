@@ -53,7 +53,7 @@ $(EXPORTED_FUNCTIONS.fiddle): $(fiddle.EXPORTED_FUNCTIONS.in) $(MAKEFILE.fiddle)
 
 fiddle-module.js := $(dir.fiddle)/fiddle-module.js
 fiddle-module.wasm := $(subst .js,.wasm,$(fiddle-module.js))
-fiddle.cses := $(dir.top)/shell.c $(sqlite3-wasm.c) $(crsql-files)
+fiddle.cses := $(dir.top)/shell.c $(sqlite3-wasm.c) $(crsql-files) $(rs-bc-files)
 
 fiddle.SOAP.js := $(dir.fiddle)/$(notdir $(SOAP.js))
 $(fiddle.SOAP.js): $(SOAP.js)
