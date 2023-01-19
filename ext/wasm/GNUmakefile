@@ -150,6 +150,7 @@ SQLITE_OPT = \
   -DSQLITE_ENABLE_DBSTAT_VTAB \
   -DSQLITE_ENABLE_BYTECODE_VTAB \
   -DSQLITE_ENABLE_OFFSET_SQL_FUNC \
+	-DSQLITE_OMIT_LOAD_EXTENSION \
   -DSQLITE_OMIT_DEPRECATED \
   -DSQLITE_OMIT_UTF16 \
   -DSQLITE_OMIT_SHARED_CACHE \
@@ -228,7 +229,7 @@ DISTCLEAN_FILES += $(bin.stripccomments)
 bin.c-pp := ./c-pp
 $(bin.c-pp): c-pp.c $(sqlite3.c) $(MAKEFILE)
 	$(CC) -O0 -o $@ c-pp.c $(sqlite3.c) '-DCMPP_DEFAULT_DELIM="//#"' -I$(dir.top) \
-		-DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_UTF16 \
+		-DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_UTF16 \
 		-DSQLITE_OMIT_SHARED_CACHE -DSQLITE_OMIT_WAL -DSQLITE_THREADSAFE=0 \
 		-DSQLITE_TEMP_STORE=3
 define C-PP.FILTER
@@ -305,7 +306,7 @@ rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
 
 $(rs-bc-files):
 	cd $(RS_LIB_DIR); \
-	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
+	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --features omit_load_extension --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
 
 rust-lib: $(rs-bc-files)
 
