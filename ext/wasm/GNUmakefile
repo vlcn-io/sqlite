@@ -295,8 +295,8 @@ $(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
 
 crsqlite-extra: $(sqlite3.extra.c)
 
-RS_LIB = crsql_automigrate_web
-RS_LIB_DIR = ../../../../rs/automigrate-web
+RS_LIB = crsql_bundle
+RS_LIB_DIR = ../../../../rs/bundle
 RS_WASM_TGT = wasm32-unknown-emscripten
 RS_WASM_TGT_DIR = $(RS_LIB_DIR)/target/$(RS_WASM_TGT)
 RS_RELEASE_BC = $(RS_WASM_TGT_DIR)/release/deps/$(RS_LIB).bc
