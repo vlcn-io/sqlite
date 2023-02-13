@@ -306,7 +306,7 @@ rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
 
 $(rs-bc-files):
 	cd $(RS_LIB_DIR); \
-	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --features omit_load_extension --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
+	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --features static,omit_load_extension --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
 
 rust-lib: $(rs-bc-files)
 
