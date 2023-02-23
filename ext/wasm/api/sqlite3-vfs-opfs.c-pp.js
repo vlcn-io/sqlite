@@ -109,7 +109,10 @@ const installOpfsVfs = function callee(options){
     options.sanityChecks = urlParams.has('opfs-sanity-check');
   }
   if(undefined===options.proxyUri){
-    options.proxyUri = callee.defaultProxyUri;
+    options.proxyUri = options.locateProxy
+      ? options.locateProxy(callee.defaultProxyUri)
+      : callee.defaultProxyUri;
+      // : new URL(callee.defaultProxyUri, import.meta.url);
   }
 
   //console.warn("OPFS options =",options,self.location);
@@ -1317,7 +1320,9 @@ self.sqlite3ApiBootstrap.initializersAsync.push(async (sqlite3)=>{
         sqlite3.scriptInfo.sqlite3Dir + proxyJs;
       //console.warn("installOpfsVfs.defaultProxyUri =",installOpfsVfs.defaultProxyUri);
     }
-    return installOpfsVfs().catch((e)=>{
+    return installOpfsVfs({
+      locateProxy: Module['locateProxy']
+    }).catch((e)=>{
       console.warn("Ignoring inability to install OPFS sqlite3_vfs:",e.message);
     });
   }catch(e){

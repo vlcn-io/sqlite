@@ -88,7 +88,7 @@ define SQLITE3-WASMFS.xJS.RECIPE
       $(cflags.sqlite3-wasmfs) \
       $(emcc.flags.sqlite3-wasmfs) $(emcc.flags.sqlite3-wasmfs.$(1)) \
       $(pre-post-sqlite3-wasmfs.flags.$(1)) \
-     $(sqlite3-wasm.c)
+     $(sqlite3-wasm.c) $(crsql-files)
 	@$(call SQLITE3.xJS.ESM-EXPORT-DEFAULT,$(1))
 	chmod -x $(sqlite3-wasmfs.wasm)
 	$(maybe-wasm-strip) $(sqlite3-wasmfs.wasm)

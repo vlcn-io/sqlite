@@ -28,7 +28,7 @@ sqlite3InitModuleState.debugModule('self.location =',self.location);
 
    4) If none of the above apply, (prefix+path) is returned.
 */
-Module['locateFile'] = function(path, prefix) {
+Module['locateFile'] = Module['locateWasm'] || function(path, prefix) {
 //#if target=es6-module
   return new URL(path, import.meta.url).href;
 //#else

@@ -156,6 +156,9 @@
 #ifndef SQLITE_THREADSAFE
 # define SQLITE_THREADSAFE 0
 #endif
+#ifndef SQLITE_EXTRA_INIT
+# define SQLITE_EXTRA_INIT core_init
+#endif
 
 /**********************************************************************/
 /* SQLITE_USE_... */
@@ -164,7 +167,7 @@
 #endif
 
 #include <assert.h>
-#include "sqlite3.c" /* yes, .c instead of .h. */
+#include "sqlite3-extra.c" /* yes, .c instead of .h. */
 
 #if defined(__EMSCRIPTEN__)
 #  include <emscripten/console.h>

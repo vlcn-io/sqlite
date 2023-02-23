@@ -77,6 +77,7 @@ else
 endif
 
 dir.top := ../..
+dir.crsql := ../crsql
 # Reminder: some Emscripten flags require absolute paths but we want
 # relative paths for most stuff simply to reduce noise. The
 # $(abspath...) GNU make function can transform relative paths to
@@ -124,6 +125,19 @@ endif
 
 sqlite3.c := $(dir.top)/sqlite3.c
 sqlite3.h := $(dir.top)/sqlite3.h
+sqlite3.extra.c := $(dir.top)/sqlite3-extra.c
+crsql-files := \
+	$(dir.crsql)/crsqlite.c\
+	$(dir.crsql)/util.c \
+	$(dir.crsql)/tableinfo.c \
+	$(dir.crsql)/triggers.c \
+	$(dir.crsql)/changes-vtab.c \
+	$(dir.crsql)/changes-vtab-read.c \
+	$(dir.crsql)/changes-vtab-common.c \
+	$(dir.crsql)/changes-vtab-write.c \
+	$(dir.crsql)/ext-data.c \
+	$(dir.crsql)/get-table.c \
+	$(dir.crsql)/seen-peers.c
 # Most SQLITE_OPT flags are set in sqlite3-wasm.c but we need them
 # made explicit here for building speedtest1.c.
 SQLITE_OPT = \
@@ -136,12 +150,13 @@ SQLITE_OPT = \
   -DSQLITE_ENABLE_DBSTAT_VTAB \
   -DSQLITE_ENABLE_BYTECODE_VTAB \
   -DSQLITE_ENABLE_OFFSET_SQL_FUNC \
-  -DSQLITE_OMIT_LOAD_EXTENSION \
+	-DSQLITE_OMIT_LOAD_EXTENSION \
   -DSQLITE_OMIT_DEPRECATED \
   -DSQLITE_OMIT_UTF16 \
   -DSQLITE_OMIT_SHARED_CACHE \
   -DSQLITE_OMIT_WAL \
   -DSQLITE_THREADSAFE=0 \
+	-DSQLITE_EXTRA_INIT=core_init \
   -DSQLITE_TEMP_STORE=3 \
   -DSQLITE_OS_KV_OPTIONAL=1 \
   '-DSQLITE_DEFAULT_UNIX_VFS="unix-none"' \
@@ -214,7 +229,7 @@ DISTCLEAN_FILES += $(bin.stripccomments)
 bin.c-pp := ./c-pp
 $(bin.c-pp): c-pp.c $(sqlite3.c) $(MAKEFILE)
 	$(CC) -O0 -o $@ c-pp.c $(sqlite3.c) '-DCMPP_DEFAULT_DELIM="//#"' -I$(dir.top) \
-		-DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_UTF16 \
+		-DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_UTF16 \
 		-DSQLITE_OMIT_SHARED_CACHE -DSQLITE_OMIT_WAL -DSQLITE_THREADSAFE=0 \
 		-DSQLITE_TEMP_STORE=3
 define C-PP.FILTER
@@ -233,7 +248,7 @@ c-pp.D.esm ?= -Dtarget=es6-module
 
 
 # cflags.common = C compiler flags for all builds
-cflags.common :=  -I. -I.. -I$(dir.top)
+cflags.common :=  -I. -I.. -I$(dir.top) -I$(dir.crsql)
 # emcc.WASM_BIGINT = 1 for BigInt (C int64) support, else 0.  The API
 # disables certain features if BigInt is not enabled and such builds
 # _are not tested_ on any regular basis.
@@ -246,6 +261,7 @@ emcc_opt ?= -O0
 
 # When passing emcc_opt from the CLI, += and re-assignment have no
 # effect, so emcc_opt+=-g3 doesn't work. So...
+# -gsource-map --source-map-base ./
 emcc_opt_full := $(emcc_opt) -g3
 # ^^^ ALWAYS use -g3. See below for why.
 #
@@ -273,6 +289,26 @@ emcc_opt_full := $(emcc_opt) -g3
 # runtime speeds, but not by a large enough factor to rule out use of
 # -Oz when small deliverable size is a priority.
 ########################################################################
+
+$(sqlite3.extra.c): $(sqlite3.c) $(dir.crsql)/core_init.c
+	cat $(sqlite3.c) $(dir.crsql)/core_init.c > $@
+
+crsqlite-extra: $(sqlite3.extra.c)
+
+RS_LIB = crsql_bundle
+RS_LIB_DIR = ../../../../core/rs/bundle
+RS_WASM_TGT = wasm32-unknown-emscripten
+RS_WASM_TGT_DIR = $(RS_LIB_DIR)/target/$(RS_WASM_TGT)
+RS_RELEASE_BC = $(RS_WASM_TGT_DIR)/release/deps/$(RS_LIB).bc
+RS_DEBUG_BC = $(RS_WASM_TGT_DIR)/debug/deps/$(RS_LIB).bc
+
+rs-bc-files = $(RS_WASM_TGT_DIR)/release/deps/*.bc
+
+$(rs-bc-files):
+	cd $(RS_LIB_DIR); \
+	RUSTFLAGS="--emit=llvm-bc -C linker=/usr/bin/true" cargo build --features static,omit_load_extension --release -Z build-std=panic_abort,core,alloc --target $(RS_WASM_TGT)
+
+rust-lib: $(rs-bc-files)
 
 # EXPORTED_FUNCTIONS.* = files for use with Emscripten's
 # -sEXPORTED_FUNCTION flag.
@@ -476,7 +512,7 @@ endif
 emcc.cflags :=
 emcc.cflags += -std=c99 -fPIC
 # -------------^^^^^^^^ we need c99 for $(sqlite3-wasm.c).
-emcc.cflags += -I. -I$(dir.top)
+emcc.cflags += -I. -I$(dir.top) -I$(dir.crsql)
 
 ########################################################################
 # emcc flags specific to building .js/.wasm files...
@@ -646,7 +682,7 @@ define SQLITE3.xJS.RECIPE
 	$(emcc.bin) -o $@ $(emcc_opt_full) $(emcc.flags) \
     $(emcc.jsflags) \
     $(pre-post-sqlite3.flags.$(1)) $(emcc.flags.sqlite3.$(1)) \
-    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c)
+    $(cflags.common) $(SQLITE_OPT) $(sqlite3-wasm.c) $(crsql-files) $(rs-bc-files)
 	@$(call SQLITE3.xJS.ESM-EXPORT-DEFAULT,$(1))
 	chmod -x $(sqlite3.wasm)
 	$(maybe-wasm-strip) $(sqlite3.wasm)
@@ -748,7 +784,7 @@ $(EXPORTED_FUNCTIONS.speedtest1): $(EXPORTED_FUNCTIONS.api)
 speedtest1.js := $(dir.dout)/speedtest1.js
 speedtest1.wasm := $(dir.dout)/speedtest1.wasm
 cflags.speedtest1 := $(cflags.common) -DSQLITE_SPEEDTEST1_WASM
-speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c)
+speedtest1.cses := $(speedtest1.c) $(sqlite3-wasm.c) $(crsql-files) $(rs-bc-files)
 $(eval $(call call-make-pre-js,speedtest1,vanilla))
 $(speedtest1.js): $(MAKEFILE) $(speedtest1.cses) \
     $(pre-post-speedtest1.deps.vanilla) \
@@ -912,3 +948,5 @@ endif
 # Run local web server for the test/demo pages.
 httpd:
 	althttpd -max-age 1 -enable-sab -page index.html
+
+FORCE: ;
